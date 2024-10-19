@@ -10,6 +10,7 @@ struct event
     std::string s_pid;
     std::string msg_id;
     int sender_pid;
+    std::string str_sender_pid;
 };
 
 std::ostream &operator<<(std::ostream &s, event &e);

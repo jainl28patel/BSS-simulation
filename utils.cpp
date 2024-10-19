@@ -1,7 +1,6 @@
 #include "utils.h"
 #include <assert.h>
 #include <stdlib.h>
-#include <iostream>
 
 std::vector<std::vector<event>> parse_commands(std::ifstream &s)
 {
@@ -15,10 +14,9 @@ std::vector<std::vector<event>> parse_commands(std::ifstream &s)
     {
         if (file_line.starts_with(begin_process_prefix))
         {
-            assert(process_events.size() == 0 && curr_pid == std::stoi(file_line.substr(end_p_no_offset)));
+            assert(process_events.size() == 0);
             curr_pid = std::stoi(file_line.substr(begin_p_no_offset));
-            
-            curr_s_pid = std::stoi(file_line.substr(begin_p_no_offset - 1));
+            curr_s_pid = file_line.substr(begin_p_no_offset - 1);
             curr_p_eid = 0;
         }
         else if (file_line.starts_with(end_process_prefix))
@@ -28,11 +26,12 @@ std::vector<std::vector<event>> parse_commands(std::ifstream &s)
                 all_process_events.push_back(process_events);
             }
             process_events.clear();
+            assert(process_events.size() == 0);
         }
         else if (file_line.starts_with(send_msg_prefix))
         {
             int curr_msg_id = std::stoi(file_line.substr(msg_no_offset));
-            process_events.push_back(event(true, curr_pid, curr_p_eid, curr_s_pid, file_line.substr(msg_no_offset - 1), curr_pid));
+            process_events.push_back(event(true, curr_pid, curr_p_eid, curr_s_pid, file_line.substr(msg_no_offset - 1), curr_pid, curr_s_pid));
             curr_p_eid++;
         }
         else if (file_line.starts_with(recv_b_prefix))
@@ -40,7 +39,7 @@ std::vector<std::vector<event>> parse_commands(std::ifstream &s)
             std::vector<std::string> curr_line_parts = split_by_space(file_line);
             int msg_id = std::stoi(curr_line_parts[2].substr(1));
             int msg_sender_pid = std::stoi(curr_line_parts[1].substr(1));
-            process_events.push_back(event(false, curr_pid, curr_p_eid, curr_s_pid, file_line.substr(msg_no_offset - 1), msg_sender_pid));
+            process_events.push_back(event(false, curr_pid, curr_p_eid, curr_s_pid, curr_line_parts[2], msg_sender_pid, curr_line_parts[1]));
             curr_p_eid++;
         }
     }
@@ -58,9 +57,9 @@ std::vector<std::string> split_by_space(std::string str)
         if (c == ' ')
         {
             if (curr.size())
-                {parts.push_back(curr);
-                    std::cout << curr << std::endl;
-                }
+            {
+                parts.push_back(curr);
+            }
             curr = "";
         }
         else

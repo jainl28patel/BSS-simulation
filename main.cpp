@@ -4,6 +4,7 @@
 #include <memory>
 #include <vector>
 #include <mutex>
+#include <utils.cpp>
 
 // global mutex lock for synchronisation
 std::mutex global_vector_lock;
@@ -11,9 +12,12 @@ std::mutex global_vector_lock;
 // message queue corresponding to each process
 std::vector<std::vector<int>> msg_queue;
 
+// number of processes
+int n;
+
 
 // BSS process handler
-void bss_process(int id)
+void bss_process(int id, std::vector<event> event)
 {
     global_vector_lock.lock();
 
@@ -41,8 +45,11 @@ int main()
     std::ifstream in_file(input_file);
     std::ofstream out_file(output_file);
 
+    // parsing input file
+    std::vector<std::vector<event>> process_events = parse_commands(in_file);
+
     // number of processes
-    int n = 4;
+    n = process_events.size();
 
     // making shared global vector
     msg_queue.resize(n);
@@ -52,7 +59,7 @@ int main()
 
     for(int i = 0; i < n; i++)
     {
-        processes.emplace_back(std::make_unique<std::thread>(bss_process,i));
+        processes.emplace_back(std::make_unique<std::thread>(bss_process,i,process_events[i]));
     }
 
     for(auto &process_thread : processes)

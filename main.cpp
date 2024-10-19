@@ -3,11 +3,31 @@
 #include <fstream>
 #include <memory>
 #include <vector>
+#include <mutex>
+
+// global mutex lock for synchronisation
+std::mutex global_vector_lock;
+
+// message queue corresponding to each process
+std::vector<std::vector<int>> msg_queue;
 
 
+// BSS process handler
 void bss_process(int id)
 {
-    std::cout << id << std::endl;
+    global_vector_lock.lock();
+
+        // critical section
+        std::cout << "critical section : " << id << std::endl;
+        if(msg_queue[0].empty()) {
+            msg_queue[0].push_back(69);
+        } else {
+            std::cout << msg_queue[0].back() << std::endl;
+            msg_queue[0].pop_back();
+        }
+    
+    global_vector_lock.unlock();
+
     return;
 }
 
@@ -23,6 +43,9 @@ int main()
 
     // number of processes
     int n = 4;
+
+    // making shared global vector
+    msg_queue.resize(n);
 
     // spawning threads
     std::vector<std::unique_ptr<std::thread>> processes;

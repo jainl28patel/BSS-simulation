@@ -34,21 +34,20 @@ bool check_timestamp(std::vector<int> &timestamp,std::vector<int> &p_clock,int s
 }
 
 void process::recieve_message(event &e){
-    global_vector_lock.lock();
     bool is_msg_found=0;
-    int msg_ind=0;
-    for(auto &z:msg_list){
-        if(z.msg_id==std::stoi(e.msg_id))break;
-        msg_ind++;
-    }
     while(true){
-        for(auto &z:msg_queue[pid]){
-            if(check_timestamp(msg_list[msg_ind].timestamp,p_clock,e.sender_pid)){
-                
+        global_vector_lock.lock();
+        for(int cnt=0;cnt<n;cnt++){
+            for(int i=0;i<msg_queue[pid].size();i++){
+                if(check_timestamp(msg_list[msg_queue[pid][i]].timestamp,p_clock,e.sender_pid)){
+                    msg_queue[pid].erase(msg_queue[pid].begin()+i);
+                    if(msg_queue[pid][i]==stoi(e.msg_id))is_msg_found=1;
+                }
             }
         }
+        global_vector_lock.unlock();
+        if(is_msg_found)break;
     }
-    global_vector_lock.unlock();
 }
 
 void process::send_message(event &e){
@@ -61,6 +60,7 @@ void process::send_message(event &e){
     global_vector_lock.lock();
     for(int id=0;id<n;id++){
         if(id==pid)continue;
+        out_file<<
         msg_queue[id].push_back(msg.msg_id);
     }
     global_vector_lock.unlock();

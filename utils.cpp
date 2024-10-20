@@ -12,6 +12,8 @@ std::vector<std::vector<event>> parse_commands(std::ifstream &s)
     std::string curr_s_pid;
     while (std::getline(s, file_line))
     {
+        // if(file_line.length() && file_line.back()=='\n') file_line.pop_back();
+        while(file_line.length() && !isalnum(file_line.back())) file_line.pop_back();
         if (file_line.starts_with(begin_process_prefix))
         {
             assert(process_events.size() == 0);

@@ -1,7 +1,10 @@
+#pragma once
+
 #include <fstream>
 #include <vector>
+#include <string>
+#include <string_view>
 #include "structs.h"
-#pragma once
 
 const std::string begin_process_prefix = "begin process p";
 const int begin_p_no_offset = begin_process_prefix.size();

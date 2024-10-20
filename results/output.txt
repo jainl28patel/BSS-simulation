@@ -1,0 +1,16 @@
+msg send : 1 to : 2 m1
+msg send : 1 to : 3 m1
+msg BSS_rrecv : 3 1
+msg APP_rrecv : 3 1
+msg BSS_rrecv : 2 1
+msg APP_rrecv : 2 1
+msg send : 2 to : 1 m2
+msg send : 2 to : 3 m2
+msg send : 2 to : 1 m3
+msg send : 2 to : 3 m3
+msg BSS_rrecv : 1 2
+msg APP_rrecv : 1 2
+msg BSS_rrecv : 3 3
+msg BSS_rrecv : 3 2
+msg APP_rrecv : 3 2
+msg APP_rrecv : 3 3

@@ -4,7 +4,9 @@
 #include <memory>
 #include <vector>
 #include <mutex>
-#include <utils.cpp>
+#include "main.h"
+
+int n; //no of processes
 
 // global mutex lock for synchronisation
 std::mutex global_vector_lock;
@@ -12,12 +14,72 @@ std::mutex global_vector_lock;
 // message queue corresponding to each process
 std::vector<std::vector<int>> msg_queue;
 
-// number of processes
-int n;
+// list of processes
+std::vector<process> p_list;
+
+std::vector<message> msg_list;
+
+message::message(){
+    msg_id=-1;
+    sender_id=-1;
+}
+
+bool check_timestamp(std::vector<int> &timestamp,std::vector<int> &p_clock,int sender_id){
+    int n=timestamp.size();
+    for(int i=0;i<n;i++){
+        if(i==sender_id)continue;
+        if(p_clock[i]<timestamp[i])return false;
+    }
+    return p_clock[sender_id]==timestamp[sender_id]-1;
+}
+
+void process::recieve_message(event &e){
+    global_vector_lock.lock();
+    bool is_msg_found=0;
+    int msg_ind=0;
+    for(auto &z:msg_list){
+        if(z.msg_id==std::stoi(e.msg_id))break;
+        msg_ind++;
+    }
+    while(true){
+        for(auto &z:msg_queue[pid]){
+            if(check_timestamp(msg_list[msg_ind].timestamp,p_clock,e.sender_pid)){
+                
+            }
+        }
+    }
+    global_vector_lock.unlock();
+}
+
+void process::send_message(event &e){
+    message msg;
+    msg.msg_id=stoi(e.msg_id); // set msg id
+    msg.sender_id=pid;
+    p_clock[pid]++;
+    msg.timestamp=p_clock;
+    msg_list.push_back(msg);
+    global_vector_lock.lock();
+    for(int id=0;id<n;id++){
+        if(id==pid)continue;
+        msg_queue[id].push_back(msg.msg_id);
+    }
+    global_vector_lock.unlock();
+}
+
+void process::run(std::vector<event> &instructions){
+    for(auto &inst:instructions){
+        if(inst.is_send_event){ //send 
+            send_message(inst);
+        }
+        else{ //receive
+            recieve_message(inst);
+        }
+    }
+}
 
 
 // BSS process handler
-void bss_process(int id, std::vector<event> event)
+void bss_process(int id)
 {
     global_vector_lock.lock();
 
@@ -45,11 +107,7 @@ int main()
     std::ifstream in_file(input_file);
     std::ofstream out_file(output_file);
 
-    // parsing input file
-    std::vector<std::vector<event>> process_events = parse_commands(in_file);
-
     // number of processes
-    n = process_events.size();
 
     // making shared global vector
     msg_queue.resize(n);
@@ -59,7 +117,7 @@ int main()
 
     for(int i = 0; i < n; i++)
     {
-        processes.emplace_back(std::make_unique<std::thread>(bss_process,i,process_events[i]));
+        processes.emplace_back(std::make_unique<std::thread>(bss_process,i));
     }
 
     for(auto &process_thread : processes)
@@ -75,3 +133,5 @@ int main()
 
     return 0;
 }
+
+main.cpp

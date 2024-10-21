@@ -28,6 +28,7 @@ std::vector<std::vector<event>> parse_commands(std::ifstream &s)
             result_file << "Exited after detecting an error in input file\nError Type: Invalid command\n";
             result_file << "Error details:\n\tWrong/no process number in a begin process command\n\tError causing line is: " << file_line;
             result_file.close();
+            error_in_input = true;
             return {};
             }
             curr_pid = std::stoi(curr_s_pid.substr(1));
@@ -41,6 +42,7 @@ std::vector<std::vector<event>> parse_commands(std::ifstream &s)
             result_file << "Exited after detecting an error in input file\nError Type: Invalid command\n";
             result_file << "Error details:\n\tWrong/no process number in an end process command\n\tError causing line is: " << file_line;
             result_file.close();
+            error_in_input = true;
             return {};
             }
             if (process_events.size())
@@ -67,6 +69,7 @@ std::vector<std::vector<event>> parse_commands(std::ifstream &s)
             result_file << "Exited after detecting an error in input file\nError Type: Invalid recv_B command\n";
             result_file << "Error details:\n\tWrong number of args in a recv_B command\n\tError causing command: " << file_line;
             result_file.close();
+            error_in_input = true;
             return {};
             } else if (curr_line_parts[1].size()!=2 || curr_line_parts[2][0]!='m'){
                 // error - invalid process / msdg id in recvb command
@@ -75,6 +78,7 @@ std::vector<std::vector<event>> parse_commands(std::ifstream &s)
             result_file << "Exited after detecting an error in input file\nError Type: Invalid recv_B command\n";
             result_file << "Error details:\n\tInvalid process/msg id in a recv_B command\n\tError causing line is: " << file_line;
             result_file.close();
+            error_in_input = true;
             return {};
             }
             int msg_id = std::stoi(curr_line_parts[2].substr(1));
@@ -91,6 +95,7 @@ std::vector<std::vector<event>> parse_commands(std::ifstream &s)
             result_file << "Exited after detecting an error in input file\nError Type: Invalid command\n";
             result_file << "Error details:\n\tError causing command line: " << file_line;
             result_file.close();
+            error_in_input = true;
             return {};
         }
     }
@@ -102,8 +107,9 @@ std::vector<std::vector<event>> parse_commands(std::ifstream &s)
             std::ofstream result_file;
             result_file.open("./results/output.txt");
             result_file << "Exited after detecting an error in input file\nError Type: A msg that was received in one process was never sent by another\n";
-            result_file << "Error details:\n\tErroronous msg received: " << rcvd_msg;
+            result_file << "Error details:\n\terror_in_input msg received: " << rcvd_msg;
             result_file.close();
+            error_in_input = true;
             return {};
         }
     }
@@ -113,6 +119,7 @@ std::vector<std::vector<event>> parse_commands(std::ifstream &s)
 std::vector<std::string> split_by_space(std::string str)
 {
     if (!str.size())
+        error_in_input = true;
         return {};
     std::string curr;
     std::vector<std::string> parts;

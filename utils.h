@@ -17,6 +17,8 @@ const int msg_no_offset = send_msg_prefix.size();
 
 const std::string recv_b_prefix = "recv_B";
 
+static bool error_in_input{false};
+
 std::vector<std::vector<event>> parse_commands(std::ifstream &s);
 
 std::vector<std::string> split_by_space(std::string str);

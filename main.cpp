@@ -6,6 +6,8 @@
 #include <mutex>
 #include <set>
 #include <unistd.h>
+#include <format>
+#include <algorithm>
 #include "utils.cpp"
 #include "main.h"
 
@@ -13,22 +15,24 @@ int n; //no of processes
 
 // global mutex lock for synchronisation
 std::mutex global_vector_lock;
+std::mutex process_log_lock;
 
 // message queue corresponding to each process
 std::vector<std::vector<message>> msg_queue;
 
+// output log
+std::vector<std::vector<std::string>> process_log;
+
 // list of processes
 std::vector<process> p_list;
 
-// std::vector<message> msg_list;
-
 // taking required files
-    std::string input_file = "input.txt";
-    std::string output_file = "./results/output.txt";
+std::string input_file = "input.txt";
+std::string output_file = "./results/output.txt";
 
-    // set input output from file
-    std::ifstream in_file(input_file);
-    std::ofstream out_file(output_file);
+// set input output from file
+std::ifstream in_file(input_file);
+std::ofstream out_file(output_file);
 
 
 message::message(){
@@ -38,105 +42,128 @@ message::message(){
 
 bool check_timestamp(std::vector<int> &timestamp,std::vector<int> &p_clock,int sender_id){
     int m=timestamp.size();
-    for(auto i : timestamp) std::cout << i << " ";
-    std::cout << std::endl;
-    for(auto i : p_clock) std::cout << i << " ";
-    std::cout << std::endl;
-    std::cout << sender_id << std::endl;
     for(int i=0;i<m;i++){
         if(i==sender_id)continue;
         if(p_clock[i]<timestamp[i])return false;
     }
-    std::cout << "checked " << std::endl;
     return p_clock[sender_id]==timestamp[sender_id]-1;
 }
 
+void update_time(std::vector<int>& p_clock, std::vector<int>& timestamp)
+{
+    for(int i = 0; i < p_clock.size(); i++)
+    {
+        p_clock[i] = std::max(p_clock[i],timestamp[i]);
+    }
+}
+
+std::string clock_to_string(std::vector<int> clock)
+{
+    std::string ret = "(";
+    std::for_each(clock.begin()+1,clock.end(),[&](int time){
+        ret += std::to_string(time);
+    });
+    ret += ")";
+    return ret;
+}
+
 void process::recieve_message(event &e){
-    // std::cout << "recv " << pid << std::endl;
     if(this->recieved_msg.find(e.msg_id)!=this->recieved_msg.end()) return;
     bool is_msg_found=0;
-    while(true){
+    bool print_bss = false;
+    bool print_app = false;
+    message msg;
+
+    while(true) {
         global_vector_lock.lock();
-            // if(msg_queue[pid].size()==0) b
-            while(msg_queue[pid].size())
+            for(auto i = msg_queue[pid].begin(); i!=msg_queue[pid].end(); i++)
             {
-                message curr_msg = msg_queue[pid].back();
-                msg_queue[pid].pop_back();
-
-                std::cout << "recv " << curr_msg.sender_id << std::endl;
-                if(check_timestamp(curr_msg.timestamp,p_clock,e.sender_pid) && 
-                                   curr_msg.msg_id==stoi(e.msg_id.substr(1)) )
-                {
+                message curr_msg = *i;
+                if(curr_msg.msg_id==stoi(e.msg_id.substr(1))) {
                     is_msg_found = true;
-                    out_file << "msg BSS_rrecv : " << pid << " " << curr_msg.msg_id << std::endl;
-                    out_file << "msg APP_rrecv : " << pid << " " << curr_msg.msg_id << std::endl;
-                    this->recieved_msg.insert(curr_msg.string_msg_id);
-                        // log bss recv
-                        // log app recv
-
-                    // update time
-                    for(int i = 0; i < curr_msg.timestamp.size(); i++)
-                    {
-                        p_clock[i] = std::max(p_clock[i],curr_msg.timestamp[i]);
-                    }
-                } else {
-                    // log bss recv
-                    // store in pending msg
-                    if(this->expected_msg.find(curr_msg.string_msg_id)!=this->expected_msg.end())
-                        out_file << "msg BSS_rrecv : " << pid << " " << curr_msg.msg_id << std::endl;
-                    this->pending_msg.push_back(curr_msg);
+                    msg = curr_msg;
+                    print_bss = true;
+                    msg_queue[pid].erase(i);
+                    break;
                 }
             }
         global_vector_lock.unlock();
 
-        if(is_msg_found) break;
-        else {
-            // check pending for new acceptance
-            while(true)
+            if(is_msg_found) break;
+
+            // check local store
+            for(auto i = this->pending_msg.begin(); i!=this->pending_msg.end(); i++)
             {
-                bool koi_mil_gaya = false;
-                for(auto i = this->pending_msg.begin(); i!=pending_msg.end(); i++)
-                {
-                    auto& msg = *i;
-                    if(check_timestamp(msg.timestamp, this->p_clock, msg.sender_id)) {
-                        koi_mil_gaya = true;
-                        // check if curr msg
-                        if(msg.msg_id==stoi(e.msg_id.substr(1)))
-                        {
-                            is_msg_found = true;
-                        }
-                        // update time
-                        for(int i = 0; i < msg.timestamp.size(); i++)
-                        {
-                            p_clock[i] = std::max(p_clock[i],msg.timestamp[i]);
-                        }
-                        this->recieved_msg.insert(msg.string_msg_id);
-                        // erase
-                        // log : deliver to the app
-                        if(this->expected_msg.find(msg.string_msg_id)!=this->expected_msg.end())
-                            out_file << "msg APP_rrecv : " << pid << " " << msg.msg_id << std::endl;
-
-                        this->pending_msg.erase(i);
-                        break;
-                    }
+                message curr_msg = *i;
+                if(curr_msg.msg_id==stoi(e.msg_id.substr(1))) {
+                    is_msg_found = true;
+                    msg = curr_msg;
+                    print_bss = false;
+                    this->pending_msg.erase(i);
+                    break;
                 }
-
-                if(!koi_mil_gaya) break;
             }
 
             if(is_msg_found) break;
+        sleep(2);
+    }
 
-            // sleep 5 sec
-            // sleep(5);
+    if(check_timestamp(msg.timestamp, this->p_clock, msg.sender_id))
+    {
+        print_app = true;
+    }
+    else
+    {
+        print_app = false;
+        this->pending_msg.push_back(msg);
+    }
+
+    if(print_bss) {
+        std::string output = std::format("recv_B p{} m{} ", msg.sender_id, msg.msg_id) + clock_to_string(this->p_clock);
+        process_log_lock.lock();
+            process_log[pid].push_back(output);
+        process_log_lock.unlock();
+    }
+    if(print_app) {
+        update_time(this->p_clock, msg.timestamp);
+        std::string output = std::format("recv_A p{} m{} ", msg.sender_id, msg.msg_id) + clock_to_string(this->p_clock);
+        process_log_lock.lock();
+            process_log[pid].push_back(output);
+        process_log_lock.unlock();
+    }
+
+    // check for after effect
+    bool koi_mila = true;
+    while(koi_mila)
+    {
+        koi_mila = false;
+        message temp_msg;
+        for(auto i = this->pending_msg.begin(); i!=this->pending_msg.end(); i++)
+        {
+            message curr_msg = *i;
+            if(check_timestamp(curr_msg.timestamp,this->p_clock,curr_msg.sender_id)) {
+                temp_msg = curr_msg;
+                koi_mila = true;
+                this->pending_msg.erase(i);
+                break;
+            }
+        }
+
+        if(koi_mila)
+        {
+            update_time(this->p_clock, temp_msg.timestamp);
+
+            std::string output = std::format("recv_A p{} m{} ", temp_msg.sender_id, temp_msg.msg_id) + clock_to_string(this->p_clock);
+            process_log_lock.lock();
+                process_log[pid].push_back(output);
+            process_log_lock.unlock();
         }
     }
 
-    // std::cout << "recv done " << pid << std::endl;
 }
 
 void process::send_message(event &e){
     message msg;
-    std::cout << "msg id 1 :" << e.msg_id << std::endl;
     msg.msg_id=stoi(e.msg_id.substr(1)); // set msg id
     msg.string_msg_id = e.msg_id;
     msg.sender_id=pid;
@@ -144,17 +171,16 @@ void process::send_message(event &e){
     msg.timestamp=p_clock;
     global_vector_lock.lock();
 
-    std::cout  << msg.msg_id << " " << msg.sender_id  << std::endl;
-    for(auto i : msg.timestamp) std::cout << i << " ";
-    std::cout << std::endl;
+    std::string output = std::format("send m{} ", msg.msg_id) + clock_to_string(this->p_clock);
+    process_log_lock.lock();
+        process_log[pid].push_back(output);
+    process_log_lock.unlock();
 
     for(int id=1;id<=n;id++){
         if(id==pid)continue;
-        out_file << "msg send : " << pid << " to : " << id << " " << e.msg_id << std::endl;
         msg_queue[id].push_back(msg);
     }
     global_vector_lock.unlock();
-    std::cout << "msg sent " << pid << std::endl;
 }
 
 void process::run(std::vector<event> &instructions){
@@ -193,21 +219,33 @@ int main()
 
     // making shared global vector
     msg_queue.resize(n+1);
+    process_log.resize(n+1);
 
     // spawning threads
     std::vector<std::unique_ptr<std::thread>> processes;
 
     for(int i = 0; i < n; i++)
     {
+        std::cout << "Spawning process p" << (i+1) << std::endl;
         processes.emplace_back(std::make_unique<std::thread>(bss_process,i+1,process_events[i]));
     }
+
+    std::cout << "Simulation under progress" << std::endl;
 
     for(auto &process_thread : processes)
     {
         process_thread.get()->join();
     }
 
-    std::cout << "All thread done" << std::endl;
+    // dump all
+    for(int i=1;i<=n;i++)
+    {
+        out_file << "begin process p" << i << std::endl;
+        for(auto i : process_log[i]){
+            out_file << "\t" << i << std::endl;
+        }
+        out_file << "end process p" << i << "\n" << std::endl;
+    }
 
     // closing files
     in_file.close();

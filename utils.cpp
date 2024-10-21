@@ -60,6 +60,23 @@ std::vector<std::vector<event>> parse_commands(std::ifstream &s)
         else if (file_line.starts_with(recv_b_prefix))
         {
             std::vector<std::string> curr_line_parts = split_by_space(file_line);
+            if (curr_line_parts.size()!=3){
+                // error - invalid recvb command
+                std::ofstream result_file;
+            result_file.open("./results/output.txt");
+            result_file << "Exited after detecting an error in input file\nError Type: Invalid recv_B command\n";
+            result_file << "Error details:\n\tWrong number of args in a recv_B command\n\tError causing command: " << file_line;
+            result_file.close();
+            return {};
+            } else if (curr_line_parts[1].size()!=2 || curr_line_parts[2][0]!='m'){
+                // error - invalid process / msdg id in recvb command
+                std::ofstream result_file;
+            result_file.open("./results/output.txt");
+            result_file << "Exited after detecting an error in input file\nError Type: Invalid recv_B command\n";
+            result_file << "Error details:\n\tInvalid process/msg id in a recv_B command\n\tError causing line is: " << file_line;
+            result_file.close();
+            return {};
+            }
             int msg_id = std::stoi(curr_line_parts[2].substr(1));
             int msg_sender_pid = std::stoi(curr_line_parts[1].substr(1));
             process_events.push_back(event(false, curr_pid, curr_p_eid, curr_s_pid, curr_line_parts[2], msg_sender_pid, curr_line_parts[1]));

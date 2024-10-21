@@ -21,12 +21,28 @@ std::vector<std::vector<event>> parse_commands(std::ifstream &s)
         if (file_line.starts_with(begin_process_prefix))
         {
             assert(process_events.size() == 0);
-            curr_pid = std::stoi(file_line.substr(begin_p_no_offset));
             curr_s_pid = file_line.substr(begin_p_no_offset - 1);
+            if (curr_s_pid.size() != 2 || curr_s_pid[0] != 'p' || curr_s_pid[1] > '9' || curr_s_pid[1] < '0'){
+                std::ofstream result_file;
+            result_file.open("./results/output.txt");
+            result_file << "Exited after detecting an error in input file\nError Type: Invalid command\n";
+            result_file << "Error details:\n\tWrong/no process number in a begin process command\n\tError causing line is: " << file_line;
+            result_file.close();
+            return {};
+            }
+            curr_pid = std::stoi(curr_s_pid.substr(1));
             curr_p_eid = 0;
         }
         else if (file_line.starts_with(end_process_prefix))
         {
+            if (file_line.size() != end_p_no_offset+1 || file_line.at(end_p_no_offset) < '0' || file_line.at(end_p_no_offset) > '9'){
+                std::ofstream result_file;
+            result_file.open("./results/output.txt");
+            result_file << "Exited after detecting an error in input file\nError Type: Invalid command\n";
+            result_file << "Error details:\n\tWrong/no process number in an end process command\n\tError causing line is: " << file_line;
+            result_file.close();
+            return {};
+            }
             if (process_events.size())
             {
                 all_process_events.push_back(process_events);

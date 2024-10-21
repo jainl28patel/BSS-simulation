@@ -1,17 +1,22 @@
 begin process p1
 	send m1 (100)
+	recv_B p2 m2 (100)
+	recv_A p2 m2 (110)
 end process p1
 
 begin process p2
 	recv_B p1 m1 (000)
 	recv_A p1 m1 (100)
 	send m2 (110)
+	send m3 (120)
 end process p2
 
 begin process p3
+	recv_B p2 m3 (000)
 	recv_B p2 m2 (000)
 	recv_B p1 m1 (000)
 	recv_A p1 m1 (100)
 	recv_A p2 m2 (110)
+	recv_A p2 m3 (120)
 end process p3
 
